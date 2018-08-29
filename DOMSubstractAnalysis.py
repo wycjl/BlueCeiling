@@ -135,6 +135,8 @@ for i in range(0,len(list)):
 
 print('-----合并所有的outfile------')
 
+print('-----合并所有的outfile------')
+
 def listdir(rootdir):
 	filenames=[]
 	for filename in os.listdir(rootdir):
@@ -157,10 +159,17 @@ for filename in os.listdir(rootdir):
 	files+=' '+rootdir+'/'+filename
 mergeImg = bigfile.replace('.tif','_merge.tif')
 
-gdal_merge ='python '+mergepy_file+'  -o '+mergeImg_file+files
+gdal_merge = 'python ' + mergepy_file + '  -o ' + mergeImg + files
 os.system(gdal_merge)
 
 print('---------合并完成---------')
+
+#创建金字塔
+print('---------创建金字塔----------')
+gdaladdo= 'gdaladdo -r average -ro '+mergeImg+' 2 4 8 16'  
+os.system(gdaladdo)
+print('---------金字塔创建成功---------')
+
 
 
 
