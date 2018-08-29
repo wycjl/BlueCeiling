@@ -159,7 +159,7 @@ for filename in os.listdir(rootdir):
 	files+=' '+rootdir+'/'+filename
 mergeImg = bigfile.replace('.tif','_merge.tif')
 
-gdal_merge = 'python ' + mergepy_file + '  -o ' + mergeImg + files
+gdal_merge = 'python ' + mergepy_file +' -pct -of GTiff' + '  -o ' + mergeImg + files
 os.system(gdal_merge)
 
 print('---------合并完成---------')
