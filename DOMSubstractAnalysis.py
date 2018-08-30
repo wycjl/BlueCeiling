@@ -12,8 +12,20 @@ import site
 import subprocess
 import numpy as np
 from osgeo import gdal, gdalconst, osr
+import shutil
+from multiprocessing import Process
+# 读取命令行参数
 
-bigfile='E:/landingpeng/luoxingall.tif'
+if len(sys.argv) == 3:
+	infile = sys.argv[1]
+	outfile = sys.argv[2]
+	#print(outfile)
+	#w = sys.argv[2]
+	#h = sys.argv[3]
+else:
+	print('参数个数不符合要求，提示：文件名（.tif） 输出文件名(.tif)')
+	exit()
+#bigfile='E:/landingpeng/luoxingall.tif'
 
 # gdal脚本路径
 dirs=site.getsitepackages()
@@ -26,11 +38,12 @@ mergepy_file=gdaldir+'/gdal_merge.py'
 #img = gdal.Open(bigfile)
 
 
-spitdir = os.path.dirname(bigfile)
+spitdir = os.path.dirname(infile)
 if(os.path.exists('tile')==False):
 	os.makedirs('tile')
 gdalretile_file=gdaldir+'/gdal_retile.py'
-gdal_retile ='python '+gdalretile_file+' -ps 5000 5000 -co "ALPHA=YES" -r bilinear -targetDir '+'tile'+' '+bigfile
+gdal_retile ='python '+gdalretile_file+' -ps 5000 5000 -co "ALPHA=YES" -r bilinear -targetDir '+'tile'+' '+infile
+#gdal_retile ='python '+gdalretile_file+' -ps '+w+' '+h+' -co "ALPHA=YES" -r bilinear -targetDir '+'tile'+' '+bigfile
 os.system(gdal_retile)
 print('----------裁剪完成---------------')
 
@@ -45,17 +58,18 @@ if (os.path.exists('coord')==False):
 pwd = os.getcwd()
 pwd_temp = os.path.join(pwd,'temp')
 pwd_out = os.path.join(pwd,'out')
-
+pwd_coord = os.path.join(pwd,'coord')
 rootdir = 'tile'
 list = os.listdir(rootdir)
 for i in range(0,len(list)):
 	if os.path.splitext(list[i])[1] == '.tif':
-		infile=os.path.join(rootdir,list[i])
+		infile_1=os.path.join(rootdir,list[i])
 		tempfile=os.path.join(pwd_temp,os.path.splitext(list[i])[0]+'-temp.tif')
-		outfile=os.path.join(pwd_out,os.path.splitext(list[i])[0]+'-out.tif')
-		file = os.path.join(pwd_out,os.path.splitext(list[i])[0]+'coord.txt')
+		outfile_1=os.path.join(pwd_out,os.path.splitext(list[i])[0]+'-out.tif')
+		file = os.path.join(pwd_coord,os.path.splitext(list[i])[0]+'coord.txt')
 		f = open(file,'w')
-		img = cv2.imread(infile)
+		img = cv2.imread(infile_1)
+		#img = np.unit8([[[img]]])
 #cv2.imshow('img',img)
 
 #kernel_2 = np.ones((2,2),np.uint8)#2x2的卷积核
@@ -110,7 +124,7 @@ for i in range(0,len(list)):
 		# cv2.imshow("prod", dilation)
 		# cv2.namedWindow("img", cv2.WINDOW_NORMAL)
 		# cv2.imshow('img', img)
-		cv2.imwrite(outfile, img)#将画上矩形的图形保存到当前目录  
+		cv2.imwrite(outfile_1, img)#将画上矩形的图形保存到当前目录  
 
 		# cv2.waitKey(0)
 		# cv2.destroyAllWindows()
@@ -119,9 +133,9 @@ for i in range(0,len(list)):
 		#注册驱动
 		gdal.AllRegister()
 		#打开Dom影像
-		ods1=gdal.Open(infile,gdal.GA_ReadOnly)
+		ods1=gdal.Open(infile_1,gdal.GA_ReadOnly)
 		#更新影像
-		ods2=gdal.Open(outfile,gdal.GA_Update)
+		ods2=gdal.Open(outfile_1,gdal.GA_Update)
 		# 设置投影
 		srs=ods1.GetProjectionRef()
 		ods2.SetProjection(srs)
@@ -131,7 +145,7 @@ for i in range(0,len(list)):
 		# 使用FlushCache将数据写入文件
 		ods2.FlushCache()
 		print(i)
-
+		del infile_1,ods2,ods1
 
 print('-----合并所有的outfile------')
 
@@ -157,19 +171,33 @@ files = ''
 for filename in os.listdir(rootdir):
 	print(filename)
 	files+=' '+rootdir+'/'+filename
-mergeImg = bigfile.replace('.tif','_merge.tif')
+#mergeImg = bigfile.replace('.tif','_merge.tif')
 
-gdal_merge = 'python ' + mergepy_file +' -pct -of GTiff' + '  -o ' + mergeImg + files
+gdal_merge = 'python ' + mergepy_file +' -pct -of GTiff' + '  -o ' + outfile+' '+ files
 os.system(gdal_merge)
+del files
 
 print('---------合并完成---------')
 
 #创建金字塔
 print('---------创建金字塔----------')
-gdaladdo= 'gdaladdo -r average -ro '+mergeImg+' 2 4 8 16'  
+gdaladdo= 'gdaladdo -r average -ro '+outfile+' 2 4 8 16'  
 os.system(gdaladdo)
 print('---------金字塔创建成功---------')
 
+
+# 删除中间文件
+def remove_dir(dir_name):
+	if os.path.exists(dir_name):
+		shutil.rmtree(dir_name)
+	else:
+		print('no such dir:%s'%dir_name)
+
+remove_dir('tile')
+remove_dir('out')
+remove_dir('temp')
+remove_dir('coord')
+print('-------执行完成--------')
 
 
 
